@@ -46,7 +46,7 @@ jobs:
 
       # 4) Run Trivy filesystem scan and fail on HIGH/CRITICAL findings.
       - name: Run Trivy (filesystem scan)
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           scan-type: fs
           scan-ref: .
