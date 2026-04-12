@@ -1,0 +1,113 @@
+services:
+  auth-db:
+    image: postgres:16-alpine
+    container_name: auth-db
+    environment:
+      POSTGRES_DB: ${AUTH_DB_NAME}
+      POSTGRES_USER: ${AUTH_DB_USER}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER} -d ${AUTH_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  patient-db:
+    image: postgres:16-alpine
+    container_name: patient-db
+    environment:
+      POSTGRES_DB: ${PATIENT_DB_NAME}
+      POSTGRES_USER: ${PATIENT_DB_USER}
+      POSTGRES_PASSWORD: ${PATIENT_DB_PASSWORD}
+    volumes:
+      - patient_db_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${PATIENT_DB_USER} -d ${PATIENT_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  appointment-db:
+    image: postgres:16-alpine
+    container_name: appointment-db
+    environment:
+      POSTGRES_DB: ${APPOINTMENT_DB_NAME}
+      POSTGRES_USER: ${APPOINTMENT_DB_USER}
+      POSTGRES_PASSWORD: ${APPOINTMENT_DB_PASSWORD}
+    volumes:
+      - appointment_db_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${APPOINTMENT_DB_USER} -d ${APPOINTMENT_DB_NAME}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: ./auth-service
+    container_name: auth-service
+    env_file:
+      - ./.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${AUTH_DB_USER}:${AUTH_DB_PASSWORD}@auth-db:5432/${AUTH_DB_NAME}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    depends_on:
+      auth-db:
+        condition: service_healthy
+
+  patient-service:
+    build:
+      context: ./patient-service
+    container_name: patient-service
+    env_file:
+      - ./.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${PATIENT_DB_USER}:${PATIENT_DB_PASSWORD}@patient-db:5432/${PATIENT_DB_NAME}
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+    depends_on:
+      auth-service:
+        condition: service_started
+      patient-db:
+        condition: service_healthy
+
+  appointment-service:
+    build:
+      context: ./appointment-service
+    container_name: appointment-service
+    env_file:
+      - ./.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${APPOINTMENT_DB_USER}:${APPOINTMENT_DB_PASSWORD}@appointment-db:5432/${APPOINTMENT_DB_NAME}
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+    depends_on:
+      auth-service:
+        condition: service_started
+      appointment-db:
+        condition: service_healthy
+
+volumes:
+  auth_db_data:
+  patient_db_data:
+  appointment_db_data:
