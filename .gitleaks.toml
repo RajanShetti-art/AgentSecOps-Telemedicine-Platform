@@ -1,0 +1,19 @@
+title = "Project-specific Gitleaks config"
+
+# Extend default Gitleaks rules and only allow known placeholder data.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow non-sensitive placeholders and demo scan payloads"
+paths = [
+  '''^\.env\.example$''',
+  '''^devsecops-agent/sample-scan-results\.json$'''
+]
+regexes = [
+  '''replace-with-a-strong-secret''',
+  '''change-auth-db-password''',
+  '''change-patient-db-password''',
+  '''change-appointment-db-password''',
+  '''Hardcoded API key detected'''
+]
