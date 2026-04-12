@@ -1,0 +1,35 @@
+{
+  "Leaks": [
+    {
+      "File": "app/config.py",
+      "RuleID": "hardcoded-secret",
+      "Description": "Hardcoded API key detected",
+      "Severity": "high",
+      "StartLine": 12
+    }
+  ],
+  "Results": [
+    {
+      "Target": "requirements.txt",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-0001",
+          "PkgName": "openssl",
+          "Severity": "HIGH",
+          "Title": "Outdated OpenSSL package"
+        }
+      ]
+    }
+  ],
+  "results": [
+    {
+      "path": "src/auth/login.py",
+      "check_id": "python.lang.security.audit.eval-used",
+      "extra": {
+        "message": "Use of eval detected",
+        "severity": "MEDIUM"
+      },
+      "start": 42
+    }
+  ]
+}

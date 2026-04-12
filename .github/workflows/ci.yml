@@ -1,0 +1,79 @@
+name: CI DevSecOps Pipeline
+
+# Run on direct pushes and pull requests to any branch.
+on:
+  push:
+  pull_request:
+
+jobs:
+  security-and-build:
+    name: Security Scans, SBOM, and Docker Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Checkout repository source code.
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2) Run Gitleaks secret scanning.
+      # Gitleaks exits non-zero when leaks are found, which fails the pipeline.
+      - name: Run Gitleaks (secret scanning)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+
+      # 3) Install Semgrep for SAST scanning.
+      - name: Install Semgrep
+        run: |
+          python -m pip install --upgrade pip
+          pip install semgrep
+
+      # Run Semgrep in JSON mode so we can enforce HIGH-severity gating.
+      - name: Run Semgrep (SAST)
+        run: |
+          semgrep scan --config p/ci --json --output semgrep-results.json .
+
+      # Fail the pipeline when Semgrep reports HIGH/CRITICAL/ERROR findings.
+      - name: Enforce Semgrep HIGH severity policy
+        run: |
+          high_count=$(jq '[.results[] | select((.extra.severity // "") == "HIGH" or (.extra.severity // "") == "CRITICAL" or (.extra.severity // "") == "ERROR")] | length' semgrep-results.json)
+          echo "Semgrep high-severity findings: ${high_count}"
+          if [ "$high_count" -gt 0 ]; then
+            echo "Failing pipeline due to HIGH-severity Semgrep findings."
+            exit 1
+          fi
+
+      # 4) Run Trivy filesystem scan and fail on HIGH/CRITICAL findings.
+      - name: Run Trivy (filesystem scan)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # 5) Generate a CycloneDX SBOM using Syft.
+      - name: Generate SBOM using Syft
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+
+      # Upload the generated SBOM as a workflow artifact.
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cyclonedx.json
+
+      # 6) Build Docker images for each microservice.
+      - name: Build Docker images
+        run: |
+          docker build -t auth-service:ci ./auth-service
+          docker build -t patient-service:ci ./patient-service
+          docker build -t appointment-service:ci ./appointment-service
