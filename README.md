@@ -77,7 +77,7 @@ Each service runs `alembic upgrade head` on startup, so required tables are crea
 ```bash
 curl -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"doctor@example.com","password":"StrongPass123"}'
+  -d '{"email":"doctor@example.com","password":"<STRONG_PASSWORD>"}'
 ```
 
 2. Login and get token:
@@ -85,7 +85,7 @@ curl -X POST http://localhost:8000/auth/register \
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"doctor@example.com","password":"StrongPass123"}'
+  -d '{"email":"doctor@example.com","password":"<STRONG_PASSWORD>"}'
 ```
 
 3. Use token against patient and appointment services:

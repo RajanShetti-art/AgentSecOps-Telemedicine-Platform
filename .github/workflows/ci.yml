@@ -16,12 +16,14 @@ jobs:
         uses: actions/checkout@v4
 
       # 2) Run Gitleaks secret scanning.
-      # Gitleaks exits non-zero when leaks are found, which fails the pipeline.
+      # Use directory mode so CI evaluates current repository files and honors
+      # the local .gitleaks.toml configuration.
       - name: Run Gitleaks (secret scanning)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+        run: |
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/repo" \
+            zricethezav/gitleaks:latest \
+            dir /repo --config=/repo/.gitleaks.toml --no-banner
 
       # 3) Install Semgrep for SAST scanning.
       - name: Install Semgrep
