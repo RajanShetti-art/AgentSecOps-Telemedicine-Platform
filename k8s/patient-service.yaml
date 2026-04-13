@@ -1,0 +1,111 @@
+# Patient service deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-service
+  namespace: devsecops
+  labels:
+    app: patient-service
+    app.kubernetes.io/part-of: telemedicine-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: patient-service
+  template:
+    metadata:
+      labels:
+        app: patient-service
+        app.kubernetes.io/component: backend
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: patient-service
+          # Replace with your registry image for cluster use.
+          image: rajanshettiart/patient-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+              name: http
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: telemedicine-secrets
+                  key: JWT_SECRET
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: telemedicine-secrets
+                  key: SECRET_KEY
+            - name: JWT_ALGORITHM
+              valueFrom:
+                configMapKeyRef:
+                  name: telemedicine-config
+                  key: JWT_ALGORITHM
+
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: telemedicine-secrets
+                  key: PATIENT_DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: telemedicine-secrets
+                  key: PATIENT_DB_PASSWORD
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: telemedicine-config
+                  key: PATIENT_DB_HOST
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: telemedicine-config
+                  key: PATIENT_DB_NAME
+
+            - name: DATABASE_URL
+              value: postgresql+psycopg2://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):5432/$(DB_NAME)
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+# Internal ClusterIP service for patient-service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: patient-service
+  namespace: devsecops
+  labels:
+    app: patient-service
+    app.kubernetes.io/part-of: telemedicine-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: patient-service
+  ports:
+    - name: http
+      port: 8001
+      targetPort: 8001

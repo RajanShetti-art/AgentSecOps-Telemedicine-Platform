@@ -1,0 +1,24 @@
+# Non-sensitive configuration shared across services.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemedicine-config
+  namespace: devsecops
+  labels:
+    app.kubernetes.io/part-of: telemedicine-platform
+data:
+  # Auth service DB metadata.
+  AUTH_DB_HOST: auth-db.devsecops.svc.cluster.local
+  AUTH_DB_NAME: auth_db
+
+  # Patient service DB metadata.
+  PATIENT_DB_HOST: patient-db.devsecops.svc.cluster.local
+  PATIENT_DB_NAME: patient_db
+
+  # Appointment service DB metadata.
+  APPOINTMENT_DB_HOST: appointment-db.devsecops.svc.cluster.local
+  APPOINTMENT_DB_NAME: appointment_db
+
+  # Common JWT settings that are not secrets.
+  JWT_ALGORITHM: HS256
+  JWT_EXPIRE_MINUTES: "60"

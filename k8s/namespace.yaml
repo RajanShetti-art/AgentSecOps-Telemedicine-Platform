@@ -1,0 +1,8 @@
+# Dedicated namespace for all telemedicine workloads.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: devsecops
+  labels:
+    app.kubernetes.io/part-of: telemedicine-platform
+    app.kubernetes.io/managed-by: argocd

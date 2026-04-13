@@ -14,11 +14,10 @@ A modular Python agent that ingests security scan results from Gitleaks, Trivy, 
 
 ## Structure
 
-- `devsecops_agent/parser.py` normalizes scan findings
-- `devsecops_agent/analyzer.py` runs the LangChain + Ollama analysis
-- `devsecops_agent/github_client.py` posts PR comments
-- `devsecops_agent/service.py` orchestrates parsing and analysis
-- `devsecops_agent/cli.py` provides a command-line entry point
+- `parser.py` parses Gitleaks, Trivy, and Semgrep JSON findings
+- `analyzer.py` analyzes each issue with LangChain + Ollama (`llama3`)
+- `github.py` posts findings as GitHub PR comments via API
+- `main.py` end-to-end entry point (parse, analyze, optional PR comments)
 
 ## Setup
 
@@ -33,7 +32,7 @@ copy .env.example .env
 Make sure Ollama is running locally and the model is available:
 
 ```bash
-ollama pull llama3.1
+ollama pull llama3
 ollama serve
 ```
 
@@ -42,15 +41,15 @@ ollama serve
 Analyze a scan file:
 
 ```bash
-python -m devsecops_agent.cli --input scan-results.json
+python main.py --input scan-results.json
 ```
 
 Analyze and post comments to a GitHub PR:
 
 ```bash
-python -m devsecops_agent.cli \
+python main.py \
   --input scan-results.json \
-  --post-github-comments \
+  --post-pr-comment \
   --github-owner RajanShetti-art \
   --github-repo AgentSecOps-Telemedicine-Platform \
   --pr-number 12
@@ -78,6 +77,7 @@ Each analysis result follows this structure:
 
 ```json
 {
+  "file": "",
   "issue": "",
   "severity": "",
   "risk": "",

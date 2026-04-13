@@ -1,0 +1,30 @@
+# ArgoCD Application for GitOps deployment from this repository.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: telemedicine-app
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: telemedicine-platform
+spec:
+  project: default
+
+  # Source repository and manifests path.
+  source:
+    repoURL: https://github.com/RajanShetti-art/AgentSecOps-Telemedicine-Platform.git
+    targetRevision: main
+    path: k8s
+
+  # Target cluster and namespace.
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: devsecops
+
+  # Automated GitOps sync with self-healing.
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
