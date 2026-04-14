@@ -19,6 +19,8 @@ spec:
         app.kubernetes.io/component: backend
     spec:
       restartPolicy: Always
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: appointment-service
           # Replace with your registry image for cluster use.
@@ -67,6 +69,15 @@ spec:
 
             - name: DATABASE_URL
               value: postgresql+psycopg2://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):5432/$(DB_NAME)
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            privileged: false
+            capabilities:
+              drop:
+                - ALL
 
           readinessProbe:
             httpGet:

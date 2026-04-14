@@ -50,6 +50,26 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
 kubectl port-forward svc/argocd-server -n argocd 8080:443
 ```
 
+## 3.1) Install Kyverno (Policy Engine)
+
+```bash
+helm repo add kyverno https://kyverno.github.io/kyverno/
+helm repo update
+helm upgrade --install kyverno kyverno/kyverno --namespace kyverno --create-namespace
+```
+
+Apply Kyverno policies:
+
+```bash
+kubectl apply -f k8s/kyverno/policies.yaml
+```
+
+Optional policy test manifests:
+
+```bash
+kubectl apply -f k8s/kyverno/policy-test-examples.yaml
+```
+
 ## 4) Bootstrap GitOps Application
 
 ```bash

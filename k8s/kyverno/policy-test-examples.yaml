@@ -1,0 +1,57 @@
+# Valid deployment example (expected to pass with a properly signed image).
+# NOTE: Replace image with one signed by the Cosign key configured in policy.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valid-policy-test
+  namespace: devsecops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: valid-policy-test
+  template:
+    metadata:
+      labels:
+        app: valid-policy-test
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: app
+          image: ghcr.io/your-org/signed-image:1.0.0
+          ports:
+            - containerPort: 8080
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            privileged: false
+          resources:
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+# Invalid deployment example (expected to be blocked by policies).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: invalid-policy-test
+  namespace: devsecops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: invalid-policy-test
+  template:
+    metadata:
+      labels:
+        app: invalid-policy-test
+    spec:
+      containers:
+        - name: bad-app
+          image: nginx:latest
+          securityContext:
+            runAsNonRoot: false
+            privileged: true
+          # Intentionally missing resources.limits to trigger policy violation.

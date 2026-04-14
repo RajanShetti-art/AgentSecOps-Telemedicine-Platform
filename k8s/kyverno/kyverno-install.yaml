@@ -1,0 +1,19 @@
+# Kyverno installation (Minikube + production-ready approach).
+# Apply with Helm (recommended):
+#   helm repo add kyverno https://kyverno.github.io/kyverno/
+#   helm repo update
+#   helm upgrade --install kyverno kyverno/kyverno \
+#     --namespace kyverno \
+#     --create-namespace
+#
+# Optional verification:
+#   kubectl get pods -n kyverno
+#
+# This file also defines the namespace explicitly for GitOps visibility.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kyverno
+  labels:
+    app.kubernetes.io/name: kyverno
+    app.kubernetes.io/part-of: policy-engine
