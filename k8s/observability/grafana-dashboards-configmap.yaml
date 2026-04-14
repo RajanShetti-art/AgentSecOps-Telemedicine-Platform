@@ -1,0 +1,120 @@
+# Grafana dashboard provisioning via sidecar in kube-prometheus-stack.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-service-health
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  service-health.json: |
+    {
+      "title": "Service Health - DevSecOps",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "15s",
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Up Targets",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(up{namespace=\"devsecops\"})",
+              "legendFormat": "up"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Pod Restart Rate",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "sum by (pod) (rate(kube_pod_container_status_restarts_total{namespace=\"devsecops\"}[5m]))",
+              "legendFormat": "{{pod}}"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-api-performance
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  api-performance.json: |
+    {
+      "title": "API Performance - DevSecOps",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "15s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Requests per Second",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{namespace=\"devsecops\"}[1m])) by (service)",
+              "legendFormat": "{{service}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "P95 Latency",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum by (le, service) (rate(http_request_duration_seconds_bucket{namespace=\"devsecops\"}[5m])))",
+              "legendFormat": "{{service}}"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-falco-alerts
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  falco-alerts.json: |
+    {
+      "title": "Falco Security Alerts",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "15s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Falco Events Rate",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(falcosidekick_events_total[5m]))",
+              "legendFormat": "events/sec"
+            }
+          ]
+        },
+        {
+          "type": "logs",
+          "title": "Falco Logs (Loki)",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "{namespace=\"falco\"}",
+              "queryType": "range"
+            }
+          ]
+        }
+      ]
+    }

@@ -1,0 +1,59 @@
+# Falco values with custom runtime security rules and log forwarding.
+
+driver:
+  kind: modern_ebpf
+
+falco:
+  jsonOutput: true
+  jsonIncludeOutputProperty: true
+  jsonIncludeTagsProperty: true
+
+  # Additional custom rules for runtime threat detection in devsecops namespace.
+  customRules:
+    devsecops-rules.yaml: |-
+      - list: devsecops_namespaces
+        items: [devsecops]
+
+      - macro: in_devsecops_namespace
+        condition: k8s.ns.name in (devsecops_namespaces)
+
+      # A) Unauthorized shell execution inside containers.
+      - rule: Unauthorized Shell Execution in Container
+        desc: Detect shell binaries executed inside devsecops containers.
+        condition: container and in_devsecops_namespace and spawned_process and proc.name in (bash, sh, zsh, ash, dash)
+        output: >-
+          Unauthorized shell execution detected (user=%user.name command=%proc.cmdline container=%container.name image=%container.image.repository namespace=%k8s.ns.name pod=%k8s.pod.name)
+        priority: WARNING
+        tags: [container, shell, devsecops, runtime]
+
+      # B) Suspicious access to /etc/passwd.
+      - rule: Suspicious /etc/passwd Access in Container
+        desc: Detect read/write/open operations on /etc/passwd in devsecops containers.
+        condition: container and in_devsecops_namespace and open_read and fd.name=/etc/passwd
+        output: >-
+          Suspicious /etc/passwd access (user=%user.name command=%proc.cmdline file=%fd.name container=%container.name namespace=%k8s.ns.name pod=%k8s.pod.name)
+        priority: WARNING
+        tags: [container, file, devsecops, runtime]
+
+      # C) Unexpected external network connection from container.
+      - rule: Unexpected External Network Connection
+        desc: Detect outbound connections from devsecops containers to external IP addresses.
+        condition: >-
+          container and in_devsecops_namespace and evt.type=connect and fd.typechar=4 and
+          not fd.sip in (127.0.0.1,::1)
+        output: >-
+          Unexpected network connection (command=%proc.cmdline src_ip=%fd.cip dest_ip=%fd.sip dest_port=%fd.sport container=%container.name namespace=%k8s.ns.name pod=%k8s.pod.name)
+        priority: NOTICE
+        tags: [container, network, devsecops, runtime]
+
+# Falcosidekick forwards Falco alerts and exposes metrics for alerting.
+falcosidekick:
+  enabled: true
+  webui:
+    enabled: false
+  serviceMonitor:
+    enabled: true
+  config:
+    debug: false
+    loki:
+      hostport: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push

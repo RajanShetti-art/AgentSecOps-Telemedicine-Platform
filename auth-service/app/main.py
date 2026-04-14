@@ -1,6 +1,7 @@
 """Auth service application entrypoint."""
 
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.config import settings
 from app.logging_config import configure_logging
@@ -10,6 +11,9 @@ from app.routes.auth import router as auth_router
 configure_logging()
 app = FastAPI(title=settings.app_name, version=settings.app_version)
 app.include_router(auth_router)
+
+# Expose Prometheus metrics endpoint at /metrics for observability stack.
+Instrumentator().instrument(app).expose(app)
 
 
 @app.get("/health", tags=["health"])

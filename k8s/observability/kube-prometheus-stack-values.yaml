@@ -1,0 +1,23 @@
+# kube-prometheus-stack values for Minikube/local Kubernetes.
+# Includes Prometheus, Alertmanager, and Grafana with dashboard sidecar.
+
+grafana:
+  defaultDashboardsEnabled: true
+  service:
+    type: ClusterIP
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+
+prometheus:
+  prometheusSpec:
+    # Keep retention small for local Minikube testing.
+    retention: 5d
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  enabled: true

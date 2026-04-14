@@ -1,0 +1,46 @@
+# Prometheus alert rules for runtime and service health.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: telemedicine-alert-rules
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: telemedicine-runtime-alerts
+      rules:
+        # Alert 1: High CPU usage at pod level.
+        - alert: HighCPUUsage
+          expr: |
+            sum by (namespace, pod) (
+              rate(container_cpu_usage_seconds_total{namespace="devsecops",container!="",image!=""}[5m])
+            ) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High CPU usage on pod {{ $labels.pod }}"
+            description: "CPU usage is above 0.8 cores for 5 minutes in namespace {{ $labels.namespace }}."
+
+        # Alert 2: Service endpoint is down.
+        - alert: ServiceDown
+          expr: up{namespace="devsecops"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Service target is down in devsecops"
+            description: "Prometheus target {{ $labels.job }} is down."
+
+        # Alert 3: Falco security events were observed.
+        # Requires falcosidekick metrics from falco-values.yaml.
+        - alert: FalcoSecurityViolation
+          expr: |
+            sum(rate(falcosidekick_events_total[5m])) > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Falco security violations detected"
+            description: "Falcosidekick reported security events in the last 5 minutes."

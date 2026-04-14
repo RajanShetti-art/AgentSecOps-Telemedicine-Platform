@@ -1,0 +1,21 @@
+# Loki stack values (Loki + Promtail) for centralized container log collection.
+
+loki:
+  enabled: true
+  isDefault: false
+  service:
+    type: ClusterIP
+  persistence:
+    enabled: false
+
+promtail:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
+# Grafana datasource auto-provisioning for Loki.
+grafana:
+  enabled: false
+
+fluent-bit:
+  enabled: false
