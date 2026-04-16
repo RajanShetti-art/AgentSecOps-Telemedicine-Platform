@@ -1,5 +1,7 @@
 #!/bin/sh
 set -e
 
+export PYTHONPATH=/service
+
 alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 8002
