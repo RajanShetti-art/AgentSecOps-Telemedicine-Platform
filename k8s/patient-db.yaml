@@ -1,0 +1,77 @@
+# Patient database deployment and service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: patient-db
+  namespace: devsecops
+  labels:
+    app: patient-db
+    app.kubernetes.io/part-of: telemedicine-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: patient-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-db
+  namespace: devsecops
+  labels:
+    app: patient-db
+    app.kubernetes.io/part-of: telemedicine-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patient-db
+  template:
+    metadata:
+      labels:
+        app: patient-db
+        app.kubernetes.io/component: database
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: telemedicine-config
+                  key: PATIENT_DB_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: telemedicine-secrets
+                  key: PATIENT_DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: telemedicine-secrets
+                  key: PATIENT_DB_PASSWORD
+          readinessProbe:
+            exec:
+              command:
+                ["sh", "-c", 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                ["sh", "-c", 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}

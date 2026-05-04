@@ -9,6 +9,11 @@ jobs:
   security-and-build:
     name: Security Scans, SBOM, and Docker Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      id-token: write
 
     steps:
       # 1) Checkout repository source code.
@@ -33,6 +38,7 @@ jobs:
 
       # Run Semgrep in JSON mode so we can enforce HIGH-severity gating.
       - name: Run Semgrep (SAST)
+        continue-on-error: true
         run: |
           semgrep scan --config p/ci --json --output semgrep-results.json .
 
@@ -48,15 +54,76 @@ jobs:
 
       # 4) Run Trivy filesystem scan and fail on HIGH/CRITICAL findings.
       - name: Run Trivy (filesystem scan)
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.35.0
         with:
           scan-type: fs
           scan-ref: .
-          format: table
+          format: json
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+          output: trivy-results.json
           exit-code: "1"
+
+      - name: Upload Trivy JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: trivy-results.json
+
+      - name: Run Kubescape (k8s manifest scanning)
+        if: always()
+        run: |
+          curl -s https://raw.githubusercontent.com/armosec/kubescape/master/install.sh | sudo bash
+          kubescape scan k8s/ --format json --output-path kubescape-results.json || true
+
+      - name: Upload Kubescape results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubescape-results
+          path: kubescape-results.json
+
+      - name: Run Checkov (IaC scanning)
+        if: always()
+        run: |
+          python -m pip install --upgrade pip
+          pip install checkov
+          checkov -d k8s/ -o json > checkov-results.json || true
+
+      - name: Upload Checkov results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-results
+          path: checkov-results.json
+
+      - name: Run kube-bench when cluster access is available
+        if: always()
+        run: |
+          if [ "${RUN_KUBE_BENCH:-false}" = "true" ]; then
+            docker run --rm \
+              --pid=host \
+              --net=host \
+              -v /var/lib:/var/lib \
+              -v /var/run:/var/run \
+              -v /etc:/etc \
+              -v /usr/bin:/usr/bin \
+              aquasec/kube-bench:latest \
+              --json > kube-bench-results.json || true
+          else
+            echo "kube-bench is opt-in; set RUN_KUBE_BENCH=true on a self-hosted runner with cluster/node access"
+            echo '{"skipped":true,"reason":"kube-bench is opt-in and requires cluster/node access"}' > kube-bench-results.json
+          fi
+
+      - name: Upload kube-bench results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kube-bench-results
+          path: kube-bench-results.json
 
       # 5) Generate a CycloneDX SBOM using Syft.
       - name: Generate SBOM using Syft
@@ -73,9 +140,263 @@ jobs:
           name: sbom-cyclonedx
           path: sbom.cyclonedx.json
 
-      # 6) Build Docker images for each microservice.
+      # 6) Run Kyverno policy tests against k8s manifests (if policies exist).
+      - name: Install Kyverno CLI
+        if: always()
+        run: |
+          curl -sSL https://github.com/kyverno/kyverno/releases/latest/download/kyverno-cli_linux_x86_64.tar.gz -o kyverno-cli.tar.gz
+          sudo tar -xzf kyverno-cli.tar.gz -C /usr/local/bin kyverno
+          kyverno version || true
+
+      - name: Run Kyverno policy tests
+        if: always()
+        run: |
+          if [ -d k8s/kyverno ]; then
+            echo "Running kyverno tests and failing on violations"
+            set -o pipefail
+            kyverno test k8s/ --policy k8s/ --output-format json > kyverno-policyreport.json
+          else
+            echo "No Kyverno policies found; skipping kyverno test"
+            echo '{"skipped":true,"reason":"No Kyverno policies found"}' > kyverno-policyreport.json
+          fi
+
+      - name: Upload Kyverno policy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kyverno-policyreport
+          path: kyverno-policyreport.json
+
+      # 7) Run the local devsecops-agent analysis on sample results (non-blocking).
+      - name: Validate Falco YAML and k8s manifests
+        if: always()
+        run: |
+          python -m pip install --upgrade pip
+          pip install yamllint pyyaml
+          echo "Linting Falco values"
+          if [ -f k8s/observability/falco-values.yaml ]; then
+            yamllint k8s/observability/falco-values.yaml || true
+          else
+            echo "No falco values file found; skipping"
+          fi
+          echo "Extracting and validating Falco runtime rules"
+          python - <<'PY'
+from pathlib import Path
+import yaml
+
+values = Path('k8s/observability/falco-values.yaml')
+if values.exists():
+    data = yaml.safe_load(values.read_text(encoding='utf-8')) or {}
+    rules = data.get('falco', {}).get('customRules', {})
+    extracted = []
+    for rule_name, rule_block in rules.items():
+        extracted.append(f'# source: {rule_name}\n{rule_block.strip()}\n')
+    Path('falco-runtime-rules.yaml').write_text('\n'.join(extracted), encoding='utf-8')
+PY
+          docker run --rm -v "${GITHUB_WORKSPACE}:/work" falcosecurity/falco-no-driver:latest falco --validate /work/falco-runtime-rules.yaml || true
+          echo "Validating k8s manifests with kubectl (dry-run)"
+          sudo snap install kubectl --classic || true
+          for f in $(git ls-files 'k8s/**/*.yaml' || true); do
+            echo "Validating $f"
+            kubectl apply --dry-run=client -f "$f" || true
+          done
+
+      - name: Run devsecops-agent analysis (live scans)
+        if: always()
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r devsecops-agent/requirements.txt
+          # Merge Semgrep and Trivy outputs into a single input file that the parser recognizes
+          python - <<'PY'
+import json,os
+out={}
+if os.path.exists('semgrep-results.json'):
+    s=json.load(open('semgrep-results.json'))
+    out['results']=s.get('results', s if isinstance(s, list) else [])
+else:
+    out['results']=[]
+if os.path.exists('trivy-results.json'):
+    t=json.load(open('trivy-results.json'))
+    if isinstance(t, dict) and 'Results' in t:
+        out['Results']=t['Results']
+    elif isinstance(t, list):
+        out['Results']=t
+    else:
+        out['Results']=[]
+else:
+    out['Results']=[]
+json.dump(out, open('devsecops-input.json','w'))
+PY
+          python -m devsecops_agent.cli --input devsecops-input.json || true
+
+      - name: Post devsecops-agent comments to PR
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r devsecops-agent/requirements.txt
+          python -m devsecops_agent.cli --input devsecops-input.json --post-github-comments --github-owner ${{ github.repository_owner }} --github-repo ${{ github.event.repository.name }} --pr-number ${{ github.event.pull_request.number }} --github-token ${{ secrets.GITHUB_TOKEN }} || true
+
+      - name: Create remediation issues for actionable findings
+        if: github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r devsecops-agent/requirements.txt
+          python -m devsecops_agent.cli --input devsecops-input.json --create-github-issues --github-owner ${{ github.repository_owner }} --github-repo ${{ github.event.repository.name }} --github-token ${{ secrets.GITHUB_TOKEN }} || true
+
+      # 8) Build Docker images for each microservice.
       - name: Build Docker images
         run: |
           docker build -t auth-service:ci ./auth-service
           docker build -t patient-service:ci ./patient-service
           docker build -t appointment-service:ci ./appointment-service
+
+      - name: Run Trivy image scan on auth-service
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: auth-service:ci
+          format: json
+          output: auth-service-ci-trivy.json
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Run Trivy image scan on patient-service
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: patient-service:ci
+          format: json
+          output: patient-service-ci-trivy.json
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Run Trivy image scan on appointment-service
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: appointment-service:ci
+          format: json
+          output: appointment-service-ci-trivy.json
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Upload image scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-results
+          path: |
+            auth-service-ci-trivy.json
+            patient-service-ci-trivy.json
+            appointment-service-ci-trivy.json
+
+      - name: Sign SBOM with cosign
+        if: always()
+        run: |
+          curl -sSL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 -o cosign
+          chmod +x cosign
+          ./cosign sign-blob --yes --output-signature sbom.cyclonedx.json.sig sbom.cyclonedx.json || true
+
+      - name: Upload SBOM signature
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-signature
+          path: sbom.cyclonedx.json.sig
+          if-no-files-found: ignore
+
+      - name: Frontend SCA (npm audit)
+        if: always()
+        working-directory: frontend
+        run: |
+          npm audit --json > npm-audit.json || true
+
+      - name: Upload frontend audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-npm-audit
+          path: frontend/npm-audit.json
+
+      - name: Build consolidated security dashboard
+        if: always()
+        run: |
+          python - <<'PY'
+import json
+from pathlib import Path
+
+def load(path):
+    p = Path(path)
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding='utf-8'))
+    except Exception:
+        return {'raw': p.read_text(encoding='utf-8')}
+
+dashboard = {
+    'semgrep': load('semgrep-results.json'),
+    'trivy_fs': load('trivy-results.json'),
+    'trivy_images': {
+        'auth_service': load('auth-service-ci-trivy.json'),
+        'patient_service': load('patient-service-ci-trivy.json'),
+        'appointment_service': load('appointment-service-ci-trivy.json'),
+    },
+    'kubescape': load('kubescape-results.json'),
+    'checkov': load('checkov-results.json'),
+  'kube_bench': load('kube-bench-results.json'),
+  'kyverno': load('kyverno-policyreport.json'),
+    'frontend_npm_audit': load('frontend/npm-audit.json'),
+}
+Path('security-dashboard.json').write_text(json.dumps(dashboard, indent=2), encoding='utf-8')
+PY
+
+      - name: Upload consolidated dashboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-dashboard
+          path: security-dashboard.json
+
+      - name: Evaluate aggregated security findings
+        if: always()
+        run: |
+          total_high=0
+
+          if [ -f semgrep-results.json ]; then
+            count=$(jq '[.results[] | select((.extra.severity // "") == "HIGH" or (.extra.severity // "") == "CRITICAL" or (.extra.severity // "") == "ERROR")] | length' semgrep-results.json)
+            echo "semgrep high/critical findings: $count"
+            total_high=$((total_high + count))
+          fi
+
+          if [ -f trivy-results.json ]; then
+            count=$(jq '[.Results[]?.Vulnerabilities[]? | select((.Severity // "") == "HIGH" or (.Severity // "") == "CRITICAL")] | length' trivy-results.json)
+            echo "filesystem trivy high/critical findings: $count"
+            total_high=$((total_high + count))
+          fi
+
+          for report in auth-service-ci-trivy.json patient-service-ci-trivy.json appointment-service-ci-trivy.json; do
+            if [ -f "$report" ]; then
+              count=$(jq '[.Results[]?.Vulnerabilities[]? | select((.Severity // "") == "HIGH" or (.Severity // "") == "CRITICAL")] | length' "$report")
+              echo "$report high/critical findings: $count"
+              total_high=$((total_high + count))
+            fi
+          done
+
+          if [ "$total_high" -gt 0 ]; then
+            echo "Failing pipeline due to aggregated HIGH/CRITICAL findings."
+            exit 1
+          fi

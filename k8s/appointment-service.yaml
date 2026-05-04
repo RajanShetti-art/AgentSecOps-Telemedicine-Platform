@@ -21,6 +21,9 @@ spec:
       restartPolicy: Always
       securityContext:
         runAsNonRoot: true
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: appointment-service
           # Replace with your registry image for cluster use.
@@ -67,12 +70,10 @@ spec:
                   name: telemedicine-config
                   key: APPOINTMENT_DB_NAME
 
-            - name: DATABASE_URL
-              value: postgresql+psycopg2://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):5432/$(DB_NAME)
-
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             privileged: false
             capabilities:

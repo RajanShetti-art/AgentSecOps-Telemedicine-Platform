@@ -18,3 +18,12 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+if not settings.database_url:
+    import os
+
+    db_user = os.getenv("DB_USER")
+    db_password = os.getenv("DB_PASSWORD")
+    db_host = os.getenv("DB_HOST")
+    db_name = os.getenv("DB_NAME")
+    if db_user and db_password and db_host and db_name:
+        settings.database_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:5432/{db_name}"

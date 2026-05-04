@@ -14,6 +14,15 @@ COPY alembic.ini ./alembic.ini
 COPY start.sh ./start.sh
 RUN chmod +x ./start.sh
 
+# Create non-root user and use it
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup --uid 10001 appuser
+RUN chown -R appuser:appgroup /service
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health').read()"
+
 EXPOSE 8002
 
 CMD ["./start.sh"]

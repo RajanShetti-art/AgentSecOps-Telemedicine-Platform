@@ -19,6 +19,14 @@ Each service includes:
 - Basic logging
 - `/health` endpoint
 
+Security notes:
+
+- Production secrets should be managed with External Secrets, Sealed Secrets, or a vault.
+- Kubernetes hardening manifests are included in `k8s/network-policy.yaml` and `k8s/resource-quota.yaml`.
+- Images should be rebuilt and pushed to a registry before deploying to Kubernetes.
+- Services run as non-root containers and use read-only root filesystems in Kubernetes.
+- The CI pipeline runs secret scanning, SAST, filesystem and image vulnerability scans, IaC checks, SBOM generation, and remediation reporting.
+
 ## Environment Setup
 
 1. Copy `.env.example` to `.env`.
@@ -49,6 +57,46 @@ docker compose up --build
 ```
 
 Each service runs `alembic upgrade head` on startup, so required tables are created automatically.
+
+## Run on Kubernetes
+
+Apply the manifests in this order:
+
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secret.yaml
+kubectl apply -f k8s/auth-db.yaml
+kubectl apply -f k8s/patient-db.yaml
+kubectl apply -f k8s/appointment-db.yaml
+kubectl apply -f k8s/auth-service.yaml
+kubectl apply -f k8s/patient-service.yaml
+kubectl apply -f k8s/appointment-service.yaml
+kubectl apply -f k8s/network-policy.yaml
+kubectl apply -f k8s/resource-quota.yaml
+```
+
+The database Services must exist before the app Deployments start, and DNS access must remain allowed for the backend pods.
+
+## CI / Security Pipeline
+
+The GitHub Actions workflow now covers:
+
+- Gitleaks secret scanning
+- Semgrep SAST
+- Trivy filesystem and image scanning
+- Kubescape and Checkov IaC checks
+- Kyverno policy testing
+- Falco YAML/runtime validation workflow
+- SBOM generation and signing
+- Frontend `npm audit`
+- devsecops-agent analysis and remediation tracking
+
+For a quick local check before pushing, run:
+
+```bash
+git diff --check
+```
 
 ## Endpoints
 
@@ -100,3 +148,9 @@ curl -X POST http://localhost:8002/appointments \
   -H "Content-Type: application/json" \
   -d '{"patient_id":1,"doctor_name":"Dr. Smith","appointment_time":"2026-04-15T10:00:00Z","reason":"Routine follow-up"}'
 ```
+
+## Known Risks
+
+- PostgreSQL uses ephemeral storage in the current manifests, so data is not durable across pod recreation.
+- The Falco runtime workflow requires a self-hosted runner and kubeconfig access.
+- The CI workflow fetches some tools at runtime, so upstream availability can affect pipeline execution.

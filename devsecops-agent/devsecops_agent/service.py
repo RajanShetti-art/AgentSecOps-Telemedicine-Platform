@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from devsecops_agent.analyzer import analyze_findings
-from devsecops_agent.github_client import build_pr_comment_body, post_pr_comment
+from devsecops_agent.github_client import build_pr_comment_body, create_github_issue, post_pr_comment
 from devsecops_agent.models import AnalysisResult, CommentTarget, Finding
 from devsecops_agent.parser import parse_scan_results
 
@@ -29,3 +29,27 @@ def post_analysis_to_pull_request(
         comment_body = build_pr_comment_body(finding, analysis)
         comments.append(post_pr_comment(target, token, comment_body))
     return comments
+
+
+def create_remediation_issues(
+    owner: str,
+    repo: str,
+    token: str,
+    findings: list[Finding],
+    analyses: list[AnalysisResult],
+) -> list[dict[str, Any]]:
+    """Creates GitHub issues for findings that need tracked remediation."""
+    issues: list[dict[str, Any]] = []
+    for finding, analysis in zip(findings, analyses, strict=True):
+        title = f"{finding.source_tool}: {analysis.issue}"
+        body = (
+            f"### Remediation Required\n\n"
+            f"- Tool: {finding.source_tool}\n"
+            f"- File: {finding.file_name}\n"
+            f"- Severity: {analysis.severity}\n"
+            f"- Risk: {analysis.risk}\n"
+            f"- Fix: {analysis.fix}\n"
+            f"- Confidence: {analysis.confidence:.2f}\n"
+        )
+        issues.append(create_github_issue(owner, repo, token, title, body, labels=["security", "remediation", finding.source_tool.lower()]))
+    return issues

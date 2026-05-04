@@ -43,3 +43,23 @@ def post_pr_comment(target: CommentTarget, token: str, body: str) -> dict[str, A
     )
     response.raise_for_status()
     return response.json()
+
+
+def create_github_issue(owner: str, repo: str, token: str, title: str, body: str, labels: list[str] | None = None) -> dict[str, Any]:
+    """Creates a GitHub issue for remediation tracking."""
+    url = f"{_GITHUB_API_BASE}/repos/{owner}/{repo}/issues"
+    payload: dict[str, Any] = {"title": title, "body": body}
+    if labels:
+        payload["labels"] = labels
+    response = requests.post(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        json=payload,
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
