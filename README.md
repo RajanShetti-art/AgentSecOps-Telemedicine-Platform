@@ -29,6 +29,26 @@ Security notes:
 
 ## Environment Setup
 
+Recommended Python version for local development:
+
+- Python 3.11 or 3.12
+- Avoid alpha/beta releases such as Python 3.15, which can break database driver installs like `psycopg2-binary`
+
+Create and verify a virtual environment on Windows PowerShell:
+
+```powershell
+# from the repo root
+python -m venv .venv
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r auth-service\requirements.txt
+python -m pip install -r patient-service\requirements.txt
+python -m pip install -r appointment-service\requirements.txt
+python -c "import uvicorn, fastapi; print('uvicorn', uvicorn.__version__, 'fastapi', fastapi.__version__)"
+python -c "import psycopg2; print('psycopg2 OK')"
+```
+
 1. Copy `.env.example` to `.env`.
 2. Set a strong `JWT_SECRET`.
 3. Set strong database passwords in `.env`.
@@ -118,6 +138,57 @@ git diff --check
 - `GET /appointments` (Bearer token required)
 - `GET /health`
 
+## Prometheus Metrics Check
+
+To verify Prometheus metrics locally, run a FastAPI service on port `5137` and then inspect the `/metrics` endpoint.
+
+1. Start the service on port `5137`:
+
+```bash
+cd auth-service
+uvicorn app.main:app --host 0.0.0.0 --port 5137 --reload
+```
+
+2. Open the metrics endpoint:
+
+```bash
+curl http://localhost:5137/metrics
+```
+
+3. The output should be Prometheus text format and include metric families such as:
+
+```text
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{endpoint="/health",method="GET",status_code="200"} 1.0
+
+# HELP http_request_duration_seconds_total Total time spent processing HTTP requests
+# TYPE http_request_duration_seconds_total counter
+http_request_duration_seconds_total{endpoint="/health",method="GET"} 0.002
+```
+
+## Prometheus Troubleshooting
+
+- Target shows `DOWN`:
+  - Confirm the FastAPI service is running and listening on the expected port.
+  - Verify `monitoring/prometheus.yml` points to the same host and port as the app.
+  - Check that Prometheus can reach the service from its network namespace or container.
+
+- `/metrics` endpoint not working:
+  - Make sure the service includes `setup_metrics(app)` in `app.main`.
+  - Confirm the route exists at `http://localhost:5137/metrics` when the app starts on port `5137`.
+  - Review the app logs for startup errors or middleware exceptions.
+
+- Wrong port configuration:
+  - Use `5137` in both the FastAPI launch command and the Prometheus target.
+  - If you change the app port, update `monitoring/prometheus.yml` to match.
+  - Restart Prometheus after changing the scrape config.
+
+- Service not reachable:
+  - Check that the service is bound to `0.0.0.0`, not just `127.0.0.1`.
+  - If running in Docker, confirm the container port is published to the host.
+  - Test the service directly with `curl http://localhost:5137/health` before checking Prometheus.
+
 ## Quick Test Flow
 
 1. Register user:
@@ -154,3 +225,15 @@ curl -X POST http://localhost:8002/appointments \
 - PostgreSQL uses ephemeral storage in the current manifests, so data is not durable across pod recreation.
 - The Falco runtime workflow requires a self-hosted runner and kubeconfig access.
 - The CI workflow fetches some tools at runtime, so upstream availability can affect pipeline execution.
+
+## Audit & Verification
+
+Recent checks on the codebase and local runtime showed the following:
+
+- FastAPI apps are defined in `auth-service/app/main.py`, `patient-service/app/main.py`, and `appointment-service/app/main.py`.
+- The repo-level `main.py` allows `python -m uvicorn main:app` from the repository root by loading the selected service app.
+- Prometheus is scraping all three FastAPI services through `monitoring/prometheus.yml`.
+- Grafana is running with datasource and dashboard provisioning enabled.
+- Local development is most reliable on Python 3.11 or 3.12.
+
+If you run into import-time database errors, verify that the virtual environment is activated and that the selected service has a valid `DATABASE_URL` in its environment.

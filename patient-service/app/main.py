@@ -4,12 +4,12 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import func, select
 
 from app.config import settings
 from app.db import SessionLocal
 from app.logging_config import configure_logging
+from app.metrics import setup_metrics
 from app.models import patient  # noqa: F401
 from app.models.patient import Patient
 from app.routes.patients import router as patient_router
@@ -44,16 +44,16 @@ def startup_seed_data() -> None:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(patient_router)
+# Setup Prometheus metrics collection
+setup_metrics(app)
 
-# Expose Prometheus metrics endpoint at /metrics for observability stack.
-Instrumentator().instrument(app).expose(app)
+app.include_router(patient_router)
 
 
 @app.get("/health", tags=["health"])
