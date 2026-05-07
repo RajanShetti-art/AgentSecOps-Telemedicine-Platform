@@ -371,6 +371,23 @@ PY
           name: security-dashboard
           path: security-dashboard.json
 
+      # 9) Generate a PPT-style HTML security report from the dashboard.
+      #    All text and table cells use plain HTML so everything is selectable
+      #    and copyable (user-select: text is set on every element).
+      - name: Generate PPT-style security report
+        if: always()
+        run: |
+          python devsecops-agent/report.py \
+            --input security-dashboard.json \
+            --output security-report.html
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.html
+
       - name: Evaluate aggregated security findings
         if: always()
         run: |
