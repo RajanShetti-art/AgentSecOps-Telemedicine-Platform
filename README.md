@@ -191,6 +191,57 @@ http_request_duration_seconds_total{endpoint="/health",method="GET"} 0.002
 
 ## Quick Test Flow
 
+## Monitoring Stack
+
+The observability infrastructure includes Prometheus for metrics collection and Grafana for visualization.
+
+### Access Points
+
+- **Prometheus**: [http://localhost:9090](http://localhost:9090)
+  - View scrape targets and job status: Status → Targets
+  - Query metrics directly: Graph tab
+  - Verify all three services are UP: auth-service, patient-service, appointment-service
+
+- **Grafana**: [http://localhost:3000](http://localhost:3000)
+  - Default login: `admin` / `admin`
+  - Datasource: Prometheus (auto-provisioned)
+  - Dashboard: FastAPI Monitoring (auto-provisioned with service metrics)
+
+### Collected Metrics
+
+All FastAPI services expose the following metrics at `/metrics`:
+
+- `http_requests_total`: Counter of total HTTP requests by endpoint, method, and status code
+- `http_request_duration_seconds`: Histogram of HTTP request latency
+- Standard Prometheus client library metrics (process, Python runtime)
+
+### Dashboard Features
+
+The auto-provisioned Grafana dashboard displays:
+
+- HTTP request rate (requests per second) by service
+- Request latency percentiles (p50, p95, p99)
+- Error rate by status code
+- Service uptime and health checks
+
+### Monitoring Workflow
+
+1. Start all services: `docker compose up -d`
+2. Verify services are healthy: `docker ps` (all services should show healthy status)
+3. Open Prometheus and confirm targets are UP at [http://localhost:9090/targets](http://localhost:9090/targets)
+4. Query example: `rate(http_requests_total[5m])` (request rate over 5 minutes)
+5. View live dashboard at [http://localhost:3000](http://localhost:3000) → FastAPI Monitoring
+
+### Metric Export & Alerting
+
+To add Alertmanager, AlertRules, or custom dashboards:
+
+- Edit `monitoring/prometheus.yml` to add alerting rules under `rule_files:`
+- Create dashboard JSON in `monitoring/grafana/dashboards/`
+- Restart monitoring stack: `docker compose down && docker compose up -d`
+
+## Quick Test Flow
+
 1. Register user:
 
 ```bash
@@ -237,3 +288,5 @@ Recent checks on the codebase and local runtime showed the following:
 - Local development is most reliable on Python 3.11 or 3.12.
 
 If you run into import-time database errors, verify that the virtual environment is activated and that the selected service has a valid `DATABASE_URL` in its environment.
+
+
