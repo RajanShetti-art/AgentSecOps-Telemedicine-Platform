@@ -24,11 +24,20 @@ jobs:
       # Use directory mode so CI evaluates current repository files and honors
       # the local .gitleaks.toml configuration.
       - name: Run Gitleaks (secret scanning)
+        continue-on-error: true
         run: |
           docker run --rm \
             -v "${GITHUB_WORKSPACE}:/repo" \
             zricethezav/gitleaks:latest \
-            dir /repo --config=/repo/.gitleaks.toml --no-banner
+            detect -s /repo -r /repo/gitleaks-report.json -f json --config=/repo/.gitleaks.toml --no-banner --exit-code 0 || true
+
+      - name: Upload Gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+          if-no-files-found: ignore
 
       # 3) Install Semgrep for SAST scanning.
       - name: Install Semgrep

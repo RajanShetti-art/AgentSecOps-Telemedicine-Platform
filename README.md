@@ -56,7 +56,7 @@ python -c "import psycopg2; print('psycopg2 OK')"
 Example:
 
 ```env
-JWT_SECRET=super-strong-secret-value
+JWT_SECRET=REDACTED
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=60
 AUTH_DB_NAME=auth_db
