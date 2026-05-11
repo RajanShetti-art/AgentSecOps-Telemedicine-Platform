@@ -1,3 +1,4 @@
+---
 # Prometheus alert rules for runtime and service health.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -14,14 +15,22 @@ spec:
         - alert: HighCPUUsage
           expr: |
             sum by (namespace, pod) (
-              rate(container_cpu_usage_seconds_total{namespace="devsecops",container!="",image!=""}[5m])
+              rate(
+                container_cpu_usage_seconds_total{
+                  namespace="devsecops",
+                  container!="",
+                  image!=""
+                }[5m]
+              )
             ) > 0.8
           for: 5m
           labels:
             severity: warning
           annotations:
             summary: "High CPU usage on pod {{ $labels.pod }}"
-            description: "CPU usage is above 0.8 cores for 5 minutes in namespace {{ $labels.namespace }}."
+            description: |
+              CPU usage is above 0.8 cores for 5 minutes in namespace
+              {{ $labels.namespace }}.
 
         # Alert 2: Service endpoint is down.
         - alert: ServiceDown
@@ -43,4 +52,5 @@ spec:
             severity: critical
           annotations:
             summary: "Falco security violations detected"
-            description: "Falcosidekick reported security events in the last 5 minutes."
+            description: |
+              Falcosidekick reported security events in the last 5 minutes.

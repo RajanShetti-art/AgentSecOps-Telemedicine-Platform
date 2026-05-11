@@ -1,3 +1,4 @@
+---
 # Grafana dashboard provisioning via sidecar in kube-prometheus-stack.
 apiVersion: v1
 kind: ConfigMap
@@ -31,7 +32,7 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
           "targets": [
             {
-              "expr": "sum by (pod) (rate(kube_pod_container_status_restarts_total{namespace=\"devsecops\"}[5m]))",
+              "expr": "sum by (pod) (rate(\n                kube_pod_container_status_restarts_total{\n                  namespace=\"devsecops\"\n                }[5m]\n              ))",
               "legendFormat": "{{pod}}"
             }
           ]
@@ -71,7 +72,7 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum by (le, service) (rate(http_request_duration_seconds_bucket{namespace=\"devsecops\"}[5m])))",
+              "expr": "histogram_quantile(0.95, sum by (le, service) (\n                rate(\n                  http_request_duration_seconds_bucket{\n                    namespace=\"devsecops\"\n                  }[5m]\n                )\n              ))",
               "legendFormat": "{{service}}"
             }
           ]

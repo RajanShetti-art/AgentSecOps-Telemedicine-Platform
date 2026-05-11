@@ -1,3 +1,4 @@
+---
 # ClusterPolicy 1: Disallow root containers in devsecops namespace.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy

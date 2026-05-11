@@ -156,13 +156,29 @@ jobs:
         if: always()
         run: |
           echo "Downloading Kyverno CLI..."
-          curl -sSL https://github.com/kyverno/kyverno/releases/latest/download/kyverno-cli_linux_x86_64.tar.gz -o kyverno-cli.tar.gz
+          KYVERNO_URL="https://github.com/kyverno/kyverno/releases/latest/download/kyverno-cli_linux_x86_64.tar.gz"
+          
+          # Try downloading with retry logic
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt/3: Downloading from $KYVERNO_URL"
+            if curl -sSL "$KYVERNO_URL" -o kyverno-cli.tar.gz; then
+              break
+            fi
+            if [ $attempt -lt 3 ]; then
+              echo "Download attempt $attempt failed, retrying..."
+              sleep 2
+            fi
+          done
+          
           if [ -f kyverno-cli.tar.gz ] && file kyverno-cli.tar.gz | grep -q gzip; then
+            echo "Extracting Kyverno CLI..."
             sudo tar -xzf kyverno-cli.tar.gz -C /usr/local/bin
             sudo chmod +x /usr/local/bin/kyverno
-            kyverno version || true
+            echo "Verifying Kyverno installation..."
+            kyverno version || echo "Warning: Could not verify kyverno version"
           else
-            echo "Kyverno CLI download failed or invalid format; skipping kyverno"
+            echo "Kyverno CLI download failed or invalid format"
+            echo "File check: $(file kyverno-cli.tar.gz 2>&1 || echo 'File not found')"
           fi
 
       - name: Run Kyverno policy tests
@@ -260,9 +276,15 @@ jobs:
       # 8) Build Docker images for each microservice.
       - name: Build Docker images
         run: |
+          echo "Building Docker images..."
           docker build -t auth-service:ci ./auth-service
+          echo "✓ auth-service:ci built successfully"
           docker build -t patient-service:ci ./patient-service
+          echo "✓ patient-service:ci built successfully"
           docker build -t appointment-service:ci ./appointment-service
+          echo "✓ appointment-service:ci built successfully"
+          echo "Verifying built images..."
+          docker images | grep ":ci"
 
       - name: Run Trivy image scan on auth-service
         if: always()
