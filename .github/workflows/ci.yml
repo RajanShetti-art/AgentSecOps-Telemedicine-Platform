@@ -208,24 +208,24 @@ jobs:
           pip install -r devsecops-agent/requirements.txt
           # Merge Semgrep and Trivy outputs into a single input file that the parser recognizes
           python - <<'PY'
-import json,os
-out={}
-if os.path.exists('semgrep-results.json'):
-    s=json.load(open('semgrep-results.json'))
-    out['results']=s.get('results', s if isinstance(s, list) else [])
-else:
-    out['results']=[]
-if os.path.exists('trivy-results.json'):
-    t=json.load(open('trivy-results.json'))
-    if isinstance(t, dict) and 'Results' in t:
-        out['Results']=t['Results']
-    elif isinstance(t, list):
-        out['Results']=t
-    else:
-        out['Results']=[]
-else:
-    out['Results']=[]
-json.dump(out, open('devsecops-input.json','w'))
+          import json,os
+          out={}
+          if os.path.exists('semgrep-results.json'):
+              s=json.load(open('semgrep-results.json'))
+              out['results']=s.get('results', s if isinstance(s, list) else [])
+          else:
+              out['results']=[]
+          if os.path.exists('trivy-results.json'):
+              t=json.load(open('trivy-results.json'))
+              if isinstance(t, dict) and 'Results' in t:
+                  out['Results']=t['Results']
+              elif isinstance(t, list):
+                  out['Results']=t
+              else:
+                  out['Results']=[]
+          else:
+              out['Results']=[]
+          json.dump(out, open('devsecops-input.json','w'))
           PY
           python -m devsecops_agent.cli --input devsecops-input.json || true
 
@@ -335,33 +335,33 @@ json.dump(out, open('devsecops-input.json','w'))
         if: always()
         run: |
           python - <<'PY'
-import json
-from pathlib import Path
+          import json
+          from pathlib import Path
 
-def load(path):
-    p = Path(path)
-    if not p.exists():
-        return {}
-    try:
-        return json.loads(p.read_text(encoding='utf-8'))
-    except Exception:
-        return {'raw': p.read_text(encoding='utf-8')}
+          def load(path):
+              p = Path(path)
+              if not p.exists():
+                  return {}
+              try:
+                  return json.loads(p.read_text(encoding='utf-8'))
+              except Exception:
+                  return {'raw': p.read_text(encoding='utf-8')}
 
-dashboard = {
-    'semgrep': load('semgrep-results.json'),
-    'trivy_fs': load('trivy-results.json'),
-    'trivy_images': {
-        'auth_service': load('auth-service-ci-trivy.json'),
-        'patient_service': load('patient-service-ci-trivy.json'),
-        'appointment_service': load('appointment-service-ci-trivy.json'),
-    },
-    'kubescape': load('kubescape-results.json'),
-    'checkov': load('checkov-results.json'),
-  'kube_bench': load('kube-bench-results.json'),
-  'kyverno': load('kyverno-policyreport.json'),
-    'frontend_npm_audit': load('frontend/npm-audit.json'),
-}
-Path('security-dashboard.json').write_text(json.dumps(dashboard, indent=2), encoding='utf-8')
+          dashboard = {
+              'semgrep': load('semgrep-results.json'),
+              'trivy_fs': load('trivy-results.json'),
+              'trivy_images': {
+                  'auth_service': load('auth-service-ci-trivy.json'),
+                  'patient_service': load('patient-service-ci-trivy.json'),
+                  'appointment_service': load('appointment-service-ci-trivy.json'),
+              },
+              'kubescape': load('kubescape-results.json'),
+              'checkov': load('checkov-results.json'),
+              'kube_bench': load('kube-bench-results.json'),
+              'kyverno': load('kyverno-policyreport.json'),
+              'frontend_npm_audit': load('frontend/npm-audit.json'),
+          }
+          Path('security-dashboard.json').write_text(json.dumps(dashboard, indent=2), encoding='utf-8')
           PY
 
       - name: Upload consolidated dashboard
