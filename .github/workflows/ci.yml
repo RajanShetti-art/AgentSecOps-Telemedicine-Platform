@@ -180,19 +180,19 @@ jobs:
             echo "No falco values file found; skipping"
           fi
           echo "Extracting and validating Falco runtime rules"
-          python - <<'PY'
-from pathlib import Path
-import yaml
+            python - <<'PY'
+            from pathlib import Path
+            import yaml
 
-values = Path('k8s/observability/falco-values.yaml')
-if values.exists():
-    data = yaml.safe_load(values.read_text(encoding='utf-8')) or {}
-    rules = data.get('falco', {}).get('customRules', {})
-    extracted = []
-    for rule_name, rule_block in rules.items():
-        extracted.append(f'# source: {rule_name}\n{rule_block.strip()}\n')
-    Path('falco-runtime-rules.yaml').write_text('\n'.join(extracted), encoding='utf-8')
-          PY
+            values = Path('k8s/observability/falco-values.yaml')
+            if values.exists():
+              data = yaml.safe_load(values.read_text(encoding='utf-8')) or {}
+              rules = data.get('falco', {}).get('customRules', {})
+              extracted = []
+              for rule_name, rule_block in rules.items():
+                extracted.append(f'# source: {rule_name}\n{rule_block.strip()}\n')
+              Path('falco-runtime-rules.yaml').write_text('\n'.join(extracted), encoding='utf-8')
+            PY
           docker run --rm -v "${GITHUB_WORKSPACE}:/work" falcosecurity/falco-no-driver:latest falco --validate /work/falco-runtime-rules.yaml || true
           echo "Validating k8s manifests with kubectl (dry-run)"
           sudo snap install kubectl --classic || true
