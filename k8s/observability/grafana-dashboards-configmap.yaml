@@ -61,7 +61,7 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
           "targets": [
             {
-              "expr": "sum(rate(http_requests_total{namespace=\"devsecops\"}[1m])) by (service)",
+              "expr": "sum(rate(http_requests_total{\n                namespace=\\\"devsecops\\\"\n              }[1m])) by (service)",
               "legendFormat": "{{service}}"
             }
           ]
@@ -72,7 +72,7 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum by (le, service) (\n                rate(\n                  http_request_duration_seconds_bucket{\n                    namespace=\"devsecops\"\n                  }[5m]\n                )\n              ))",
+              "expr": "histogram_quantile(0.95, sum by (le, service) (\n                rate(\n                  http_request_duration_seconds_bucket{\n                    namespace=\\\"devsecops\\\"\n                  }[5m]\n                )\n              ))",
               "legendFormat": "{{service}}"
             }
           ]

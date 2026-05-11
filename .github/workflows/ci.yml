@@ -167,10 +167,11 @@ jobs:
           echo "Downloading Kyverno CLI..."
           KYVERNO_URL="https://github.com/kyverno/kyverno/releases/download/v1.11.4/kyverno-cli_linux_x86_64.tar.gz"
 
-          # Try downloading with retry logic
+          # Try downloading with retry logic and fail on HTTP errors
           for attempt in 1 2 3; do
             echo "Attempt $attempt/3: Downloading from $KYVERNO_URL"
-            if curl -sSL "$KYVERNO_URL" -o kyverno-cli.tar.gz; then
+            if curl -fsSL "$KYVERNO_URL" -o kyverno-cli.tar.gz; then
+              echo "Download succeeded"
               break
             fi
             if [ $attempt -lt 3 ]; then
@@ -179,12 +180,19 @@ jobs:
             fi
           done
 
+          # Validate archive format before extracting
           if [ -f kyverno-cli.tar.gz ] && file kyverno-cli.tar.gz | grep -q gzip; then
-            echo "Extracting Kyverno CLI..."
-            sudo tar -xzf kyverno-cli.tar.gz -C /usr/local/bin
-            sudo chmod +x /usr/local/bin/kyverno
-            echo "Verifying Kyverno installation..."
-            kyverno version || echo "Warning: Could not verify kyverno version"
+            echo "Valid Kyverno tarball detected; testing archive contents..."
+            if tar -tzf kyverno-cli.tar.gz > /dev/null 2>&1; then
+              echo "Extracting Kyverno CLI..."
+              sudo tar -xzf kyverno-cli.tar.gz -C /usr/local/bin
+              sudo chmod +x /usr/local/bin/kyverno
+              echo "Verifying Kyverno installation..."
+              kyverno version || echo "Warning: Could not verify kyverno version"
+            else
+              echo "Kyverno tarball appears corrupted; skipping extraction"
+              echo "File check: $(file kyverno-cli.tar.gz 2>&1 || echo 'File not found')"
+            fi
           else
             echo "Kyverno CLI download failed or invalid format"
             echo "File check: $(file kyverno-cli.tar.gz 2>&1 || echo 'File not found')"

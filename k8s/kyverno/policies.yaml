@@ -134,14 +134,16 @@ spec:
           conditions:
             any:
               - key: >-
-                  {{ request.object.spec.containers[].securityContext.privileged
-                  || `[]` }}
+                  {{ request.object.spec.containers[]
+                     .securityContext.privileged
+                     || `[]` }}
                 operator: AnyIn
                 value:
                   - true
               - key: >-
-                  {{ request.object.spec.initContainers[].securityContext.privileged
-                  || `[]` }}
+                  {{ request.object.spec.initContainers[]
+                     .securityContext.privileged
+                     || `[]` }}
                 operator: AnyIn
                 value:
                   - true
