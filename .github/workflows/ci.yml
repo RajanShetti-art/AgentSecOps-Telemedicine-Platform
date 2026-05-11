@@ -192,8 +192,8 @@ if values.exists():
     for rule_name, rule_block in rules.items():
         extracted.append(f'# source: {rule_name}\n{rule_block.strip()}\n')
     Path('falco-runtime-rules.yaml').write_text('\n'.join(extracted), encoding='utf-8')
-        PY
-        docker run --rm -v "${GITHUB_WORKSPACE}:/work" falcosecurity/falco-no-driver:latest falco --validate /work/falco-runtime-rules.yaml || true
+          PY
+          docker run --rm -v "${GITHUB_WORKSPACE}:/work" falcosecurity/falco-no-driver:latest falco --validate /work/falco-runtime-rules.yaml || true
           echo "Validating k8s manifests with kubectl (dry-run)"
           sudo snap install kubectl --classic || true
           for f in $(git ls-files 'k8s/**/*.yaml' || true); do
@@ -362,9 +362,9 @@ dashboard = {
     'frontend_npm_audit': load('frontend/npm-audit.json'),
 }
 Path('security-dashboard.json').write_text(json.dumps(dashboard, indent=2), encoding='utf-8')
-      PY
+          PY
 
-  - name: Upload consolidated dashboard
+      - name: Upload consolidated dashboard
         if: always()
         uses: actions/upload-artifact@v4
         with:
