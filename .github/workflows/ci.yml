@@ -76,8 +76,15 @@ jobs:
       - name: Run Kubescape (k8s manifest scanning)
         if: always()
         run: |
-          curl -s https://raw.githubusercontent.com/armosec/kubescape/master/install.sh | sudo bash
-          kubescape scan k8s/ --format json --output-path kubescape-results.json || true
+          echo "Installing Kubescape..."
+          curl -sSL https://raw.githubusercontent.com/armosec/kubescape/master/install.sh -o install-kubescape.sh
+          sudo bash install-kubescape.sh
+          if command -v kubescape &> /dev/null; then
+            kubescape scan k8s/ --format json --output-path kubescape-results.json || true
+          else
+            echo "Kubescape installation failed; skipping kubescape scan"
+            echo '{"skipped":true,"reason":"Kubescape installation failed"}' > kubescape-results.json
+          fi
 
       - name: Upload Kubescape results
         if: always()
@@ -144,9 +151,15 @@ jobs:
       - name: Install Kyverno CLI
         if: always()
         run: |
+          echo "Downloading Kyverno CLI..."
           curl -sSL https://github.com/kyverno/kyverno/releases/latest/download/kyverno-cli_linux_x86_64.tar.gz -o kyverno-cli.tar.gz
-          sudo tar -xzf kyverno-cli.tar.gz -C /usr/local/bin kyverno
-          kyverno version || true
+          if [ -f kyverno-cli.tar.gz ] && file kyverno-cli.tar.gz | grep -q gzip; then
+            sudo tar -xzf kyverno-cli.tar.gz -C /usr/local/bin
+            sudo chmod +x /usr/local/bin/kyverno
+            kyverno version || true
+          else
+            echo "Kyverno CLI download failed or invalid format; skipping kyverno"
+          fi
 
       - name: Run Kyverno policy tests
         if: always()
@@ -180,19 +193,19 @@ jobs:
             echo "No falco values file found; skipping"
           fi
           echo "Extracting and validating Falco runtime rules"
-            python - <<'PY'
-            from pathlib import Path
-            import yaml
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
 
-            values = Path('k8s/observability/falco-values.yaml')
-            if values.exists():
+          values = Path('k8s/observability/falco-values.yaml')
+          if values.exists():
               data = yaml.safe_load(values.read_text(encoding='utf-8')) or {}
               rules = data.get('falco', {}).get('customRules', {})
               extracted = []
               for rule_name, rule_block in rules.items():
-                extracted.append(f'# source: {rule_name}\n{rule_block.strip()}\n')
+                  extracted.append(f'# source: {rule_name}\n{rule_block.strip()}\n')
               Path('falco-runtime-rules.yaml').write_text('\n'.join(extracted), encoding='utf-8')
-            PY
+          PY
           docker run --rm -v "${GITHUB_WORKSPACE}:/work" falcosecurity/falco-no-driver:latest falco --validate /work/falco-runtime-rules.yaml || true
           echo "Validating k8s manifests with kubectl (dry-run)"
           sudo snap install kubectl --classic || true
@@ -203,6 +216,8 @@ jobs:
 
       - name: Run devsecops-agent analysis (live scans)
         if: always()
+        env:
+          PYTHONPATH: ${{ github.workspace }}/devsecops-agent:$PYTHONPATH
         run: |
           python -m pip install --upgrade pip
           pip install -r devsecops-agent/requirements.txt
@@ -233,6 +248,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONPATH: ${{ github.workspace }}/devsecops-agent:$PYTHONPATH
         run: |
           python -m pip install --upgrade pip
           pip install -r devsecops-agent/requirements.txt
@@ -242,6 +258,7 @@ jobs:
         if: github.event_name == 'push'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONPATH: ${{ github.workspace }}/devsecops-agent:$PYTHONPATH
         run: |
           python -m pip install --upgrade pip
           pip install -r devsecops-agent/requirements.txt
