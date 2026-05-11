@@ -5,6 +5,7 @@ useDefault = true
 
 [[rules]]
 description = "Generic API keys and tokens"
+id = "generic-api-keys-and-tokens"
 regex = '''(?i)(?:api(?:_?key)|token|secret)[\s:=]+["']?[0-9A-Za-z\-_=]{20,}["']?'''
 tags = ["api", "key", "secret"]
 
