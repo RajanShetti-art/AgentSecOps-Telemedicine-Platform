@@ -84,7 +84,7 @@ jobs:
           curl -sSL https://raw.githubusercontent.com/armosec/kubescape/master/install.sh -o install-kubescape.sh
           sudo bash install-kubescape.sh
           if command -v kubescape &> /dev/null; then
-            kubescape scan k8s/ --format json --output-path kubescape-results.json || true
+            kubescape scan k8s/ --format json --output kubescape-results.json || true
           else
             echo "Kubescape installation failed; skipping kubescape scan"
             echo '{"skipped":true,"reason":"Kubescape installation failed"}' > kubescape-results.json
@@ -156,8 +156,8 @@ jobs:
         if: always()
         run: |
           echo "Downloading Kyverno CLI..."
-          KYVERNO_URL="https://github.com/kyverno/kyverno/releases/latest/download/kyverno-cli_linux_x86_64.tar.gz"
-          
+          KYVERNO_URL="https://github.com/kyverno/kyverno/releases/download/v1.11.4/kyverno-cli_linux_x86_64.tar.gz"
+
           # Try downloading with retry logic
           for attempt in 1 2 3; do
             echo "Attempt $attempt/3: Downloading from $KYVERNO_URL"
@@ -169,7 +169,7 @@ jobs:
               sleep 2
             fi
           done
-          
+
           if [ -f kyverno-cli.tar.gz ] && file kyverno-cli.tar.gz | grep -q gzip; then
             echo "Extracting Kyverno CLI..."
             sudo tar -xzf kyverno-cli.tar.gz -C /usr/local/bin
