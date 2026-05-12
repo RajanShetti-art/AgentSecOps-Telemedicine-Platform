@@ -68,7 +68,7 @@ jobs:
       # 4) Run Trivy filesystem scan and fail on HIGH/CRITICAL findings.
       - name: Run Trivy (filesystem scan)
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -306,7 +306,7 @@ jobs:
       - name: Run Trivy image scan on auth-service
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: auth-service:ci
           format: json
@@ -319,7 +319,7 @@ jobs:
       - name: Run Trivy image scan on patient-service
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: patient-service:ci
           format: json
@@ -332,7 +332,7 @@ jobs:
       - name: Run Trivy image scan on appointment-service
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: appointment-service:ci
           format: json
