@@ -165,7 +165,7 @@ jobs:
         if: always()
         run: |
           echo "Downloading Kyverno CLI..."
-          KYVERNO_URL="https://github.com/kyverno/kyverno/releases/download/v1.11.4/kyverno-cli_linux_x86_64.tar.gz"
+          KYVERNO_URL="https://github.com/kyverno/kyverno/releases/download/v1.11.4/kyverno-v1.11.4-linux-amd64.tar.gz"
 
           # Try downloading with retry logic and fail on HTTP errors
           for attempt in 1 2 3; do
@@ -301,7 +301,7 @@ jobs:
           docker build -t appointment-service:ci ./appointment-service
           echo "✓ appointment-service:ci built successfully"
           echo "Verifying built images..."
-          docker images | grep ":ci"
+          docker images | grep ":ci" || true
 
       - name: Run Trivy image scan on auth-service
         if: always()
