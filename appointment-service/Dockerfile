@@ -14,8 +14,8 @@ COPY alembic.ini ./alembic.ini
 COPY start.sh ./start.sh
 RUN chmod +x ./start.sh
 
-# Create non-root user and use it
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup --uid 10001 appuser
+# Create non-root user and use it (stable across Debian-based images)
+RUN groupadd --gid 10001 appgroup && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin appuser
 RUN chown -R appuser:appgroup /service
 
 USER appuser
