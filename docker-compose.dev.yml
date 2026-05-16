@@ -1,0 +1,76 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: telemed-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: telemed
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  auth-service:
+    build:
+      context: ./auth-service
+    container_name: auth-service
+    env_file:
+      - ./auth-service/.env
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: db
+      DB_NAME: authdb
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  appointment-service:
+    build:
+      context: ./appointment-service
+    container_name: appointment-service
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: db
+      DB_NAME: appointmentdb
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: HS256
+    ports:
+      - "8002:8002"
+    depends_on:
+      - db
+
+  patient-service:
+    build:
+      context: ./patient-service
+    container_name: patient-service
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: db
+      DB_NAME: patientdb
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: HS256
+    ports:
+      - "8001:8001"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - auth-service
+      - patient-service
+      - appointment-service
+
+volumes:
+  db_data:
