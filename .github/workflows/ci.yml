@@ -68,7 +68,7 @@ jobs:
       # 4) Run Trivy filesystem scan and fail on HIGH/CRITICAL findings.
       - name: Run Trivy (filesystem scan)
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -301,12 +301,18 @@ jobs:
           docker build -t appointment-service:ci ./appointment-service
           echo "✓ appointment-service:ci built successfully"
           echo "Verifying built images..."
-          docker images | grep ":ci" || true
+          for image in auth-service:ci patient-service:ci appointment-service:ci; do
+            if ! docker image inspect "$image" >/dev/null 2>&1; then
+              echo "Expected Docker image not found: $image"
+              exit 1
+            fi
+          done
+          echo "All expected CI images are present."
 
       - name: Run Trivy image scan on auth-service
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: auth-service:ci
           format: json
@@ -319,7 +325,7 @@ jobs:
       - name: Run Trivy image scan on patient-service
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: patient-service:ci
           format: json
@@ -332,7 +338,7 @@ jobs:
       - name: Run Trivy image scan on appointment-service
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: appointment-service:ci
           format: json
