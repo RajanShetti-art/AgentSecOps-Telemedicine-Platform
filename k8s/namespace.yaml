@@ -1,3 +1,4 @@
+---
 # Dedicated namespace for all telemedicine workloads.
 apiVersion: v1
 kind: Namespace

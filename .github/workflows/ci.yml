@@ -18,7 +18,7 @@ jobs:
     steps:
       # 1) Checkout repository source code.
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # 2) Run Gitleaks secret scanning.
       # Use directory mode so CI evaluates current repository files and honors
@@ -33,7 +33,7 @@ jobs:
 
       - name: Upload Gitleaks report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: gitleaks-report
           path: gitleaks-report.json
@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload Trivy JSON
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: trivy-results
           path: trivy-results.json
@@ -101,7 +101,7 @@ jobs:
 
       - name: Upload Kubescape results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: kubescape-results
           path: kubescape-results.json
@@ -115,7 +115,7 @@ jobs:
 
       - name: Upload Checkov results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: checkov-results
           path: checkov-results.json
@@ -140,7 +140,7 @@ jobs:
 
       - name: Upload kube-bench results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: kube-bench-results
           path: kube-bench-results.json
@@ -155,7 +155,7 @@ jobs:
 
       # Upload the generated SBOM as a workflow artifact.
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sbom-cyclonedx
           path: sbom.cyclonedx.json
@@ -214,7 +214,7 @@ jobs:
 
       - name: Upload Kyverno policy report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: kyverno-policyreport
           path: kyverno-policyreport.json
@@ -344,7 +344,7 @@ jobs:
 
       - name: Upload image scan artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: trivy-image-results
           path: |
@@ -365,7 +365,7 @@ jobs:
 
       - name: Upload SBOM signature
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sbom-signature
           path: sbom.cyclonedx.json.sig
@@ -379,7 +379,7 @@ jobs:
 
       - name: Upload frontend audit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: frontend-npm-audit
           path: frontend/npm-audit.json
@@ -419,7 +419,7 @@ jobs:
 
       - name: Upload consolidated dashboard
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: security-dashboard
           path: security-dashboard.json

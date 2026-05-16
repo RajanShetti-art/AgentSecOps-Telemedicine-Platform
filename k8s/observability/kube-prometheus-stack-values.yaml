@@ -1,3 +1,4 @@
+---
 # kube-prometheus-stack values for Minikube/local Kubernetes.
 # Includes Prometheus, Alertmanager, and Grafana with dashboard sidecar.
 

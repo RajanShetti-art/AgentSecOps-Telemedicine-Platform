@@ -1,3 +1,4 @@
+---
 # Patient database deployment and service.
 apiVersion: v1
 kind: Service

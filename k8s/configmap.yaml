@@ -1,3 +1,4 @@
+---
 # Non-sensitive configuration shared across services.
 apiVersion: v1
 kind: ConfigMap

@@ -8,7 +8,7 @@ metadata:
   labels:
     grafana_dashboard: "1"
 data:
-  service-health.json: |
+  service-health.json: >-
     {
       "title": "Service Health - DevSecOps",
       "schemaVersion": 39,
@@ -32,7 +32,9 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
           "targets": [
             {
-              "expr": "sum by (pod) (rate(\n                kube_pod_container_status_restarts_total{\n                  namespace=\"devsecops\"\n                }[5m]\n              ))",
+              "expr": "sum by (pod) (rate(
+                kube_pod_container_status_restarts_total{namespace=\"devsecops\"}[5m]
+              ))",
               "legendFormat": "{{pod}}"
             }
           ]
@@ -48,7 +50,7 @@ metadata:
   labels:
     grafana_dashboard: "1"
 data:
-  api-performance.json: |
+  api-performance.json: >-
     {
       "title": "API Performance - DevSecOps",
       "schemaVersion": 39,
@@ -61,7 +63,9 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
           "targets": [
             {
-              "expr": "sum(rate(http_requests_total{\n                namespace=\\\"devsecops\\\"\n              }[1m])) by (service)",
+              "expr": "sum(rate(
+                http_requests_total{namespace=\\\"devsecops\\\"}[1m]
+              )) by (service)",
               "legendFormat": "{{service}}"
             }
           ]
@@ -72,7 +76,9 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum by (le, service) (\n                rate(\n                  http_request_duration_seconds_bucket{\n                    namespace=\\\"devsecops\\\"\n                  }[5m]\n                )\n              ))",
+              "expr": "histogram_quantile(0.95, sum by (le, service) (rate(
+                http_request_duration_seconds_bucket{namespace=\\\"devsecops\\\"}[5m]
+              )))",
               "legendFormat": "{{service}}"
             }
           ]
@@ -88,7 +94,7 @@ metadata:
   labels:
     grafana_dashboard: "1"
 data:
-  falco-alerts.json: |
+  falco-alerts.json: >-
     {
       "title": "Falco Security Alerts",
       "schemaVersion": 39,

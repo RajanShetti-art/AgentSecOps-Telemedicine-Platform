@@ -1,3 +1,4 @@
+---
 # ServiceMonitors scrape FastAPI metrics from all microservices in devsecops.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor

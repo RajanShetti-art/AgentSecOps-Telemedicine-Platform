@@ -1,3 +1,4 @@
+---
 # Valid deployment example (expected to pass with a properly signed image).
 # NOTE: Replace image with one signed by the Cosign key configured in policy.
 apiVersion: apps/v1
@@ -54,4 +55,3 @@ spec:
           securityContext:
             runAsNonRoot: false
             privileged: true
-          # Intentionally missing resources.limits to trigger policy violation.

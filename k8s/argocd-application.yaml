@@ -12,7 +12,8 @@ spec:
 
   # Source repository and manifests path.
   source:
-    repoURL: https://github.com/RajanShetti-art/AgentSecOps-Telemedicine-Platform.git
+    repoURL: "https://github.com/RajanShetti-art/AgentSecOps-\\
+      Telemedicine-Platform.git"
     targetRevision: main
     path: k8s
 

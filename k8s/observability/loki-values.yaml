@@ -1,3 +1,4 @@
+---
 # Loki stack values (Loki + Promtail) for centralized container log collection.
 
 loki:
