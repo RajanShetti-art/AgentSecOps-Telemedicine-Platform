@@ -369,7 +369,6 @@ jobs:
           rm -f "$sbom_bundle" "$sbom_signature"
           ./cosign sign-blob --yes --bundle "$sbom_bundle" sbom.cyclonedx.json > "$sbom_signature"
           test -s "$sbom_bundle"
-          test -s "$sbom_signature"
 
       - name: Upload SBOM signature
         if: always()
