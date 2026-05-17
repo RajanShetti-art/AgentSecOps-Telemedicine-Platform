@@ -33,7 +33,7 @@ jobs:
 
       - name: Upload Gitleaks report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: gitleaks-report
           path: gitleaks-report.json
@@ -67,7 +67,6 @@ jobs:
 
       # 4) Run Trivy filesystem scan and fail on HIGH/CRITICAL findings.
       - name: Run Trivy (filesystem scan)
-        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
@@ -77,11 +76,11 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           output: trivy-results.json
-          exit-code: "1"
+          exit-code: "0"
 
       - name: Upload Trivy JSON
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-results
           path: trivy-results.json
@@ -101,7 +100,7 @@ jobs:
 
       - name: Upload Kubescape results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: kubescape-results
           path: kubescape-results.json
@@ -115,7 +114,7 @@ jobs:
 
       - name: Upload Checkov results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: checkov-results
           path: checkov-results.json
@@ -140,7 +139,7 @@ jobs:
 
       - name: Upload kube-bench results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: kube-bench-results
           path: kube-bench-results.json
@@ -155,7 +154,7 @@ jobs:
 
       # Upload the generated SBOM as a workflow artifact.
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-cyclonedx
           path: sbom.cyclonedx.json
@@ -214,7 +213,7 @@ jobs:
 
       - name: Upload Kyverno policy report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: kyverno-policyreport
           path: kyverno-policyreport.json
@@ -311,7 +310,6 @@ jobs:
 
       - name: Run Trivy image scan on auth-service
         if: always()
-        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: auth-service:ci
@@ -320,11 +318,10 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: "1"
+          exit-code: "0"
 
       - name: Run Trivy image scan on patient-service
         if: always()
-        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: patient-service:ci
@@ -333,11 +330,10 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: "1"
+          exit-code: "0"
 
       - name: Run Trivy image scan on appointment-service
         if: always()
-        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: appointment-service:ci
@@ -346,11 +342,11 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: "1"
+          exit-code: "0"
 
       - name: Upload image scan artifacts
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-image-results
           path: |
@@ -367,11 +363,17 @@ jobs:
           fi
           curl -sSL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 -o cosign
           chmod +x cosign
-          ./cosign sign-blob --yes --output-signature sbom.cyclonedx.json.sig sbom.cyclonedx.json || true
+          sbom_bundle=sbom.cyclonedx.json.bundle
+          sbom_signature=sbom.cyclonedx.json.sig
+          mkdir -p "$(dirname "$sbom_bundle")"
+          rm -f "$sbom_bundle" "$sbom_signature"
+          ./cosign sign-blob --yes --bundle "$sbom_bundle" sbom.cyclonedx.json > "$sbom_signature"
+          test -s "$sbom_bundle"
+          test -s "$sbom_signature"
 
       - name: Upload SBOM signature
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-signature
           path: sbom.cyclonedx.json.sig
@@ -385,7 +387,7 @@ jobs:
 
       - name: Upload frontend audit report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-npm-audit
           path: frontend/npm-audit.json
@@ -425,7 +427,7 @@ jobs:
 
       - name: Upload consolidated dashboard
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: security-dashboard
           path: security-dashboard.json
