@@ -9,10 +9,31 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.dependencies import get_current_user_email
 from app.models.patient import Patient
-from app.schemas.patient import PatientResponse
+from app.schemas.patient import PatientCreateRequest, PatientResponse
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 logger = logging.getLogger(__name__)
+
+
+@router.post("", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)
+def create_patient(
+    payload: PatientCreateRequest,
+    current_user: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db),
+) -> PatientResponse:
+    """Creates a patient record for authenticated users."""
+    patient = Patient(full_name=payload.full_name, age=0, condition=payload.condition)
+    db.add(patient)
+    db.commit()
+    db.refresh(patient)
+
+    logger.info("User %s created patient id=%s", current_user, patient.id)
+    return PatientResponse(
+        id=patient.id,
+        full_name=patient.full_name,
+        age=patient.age,
+        condition=patient.condition,
+    )
 
 
 @router.get("", response_model=list[PatientResponse])

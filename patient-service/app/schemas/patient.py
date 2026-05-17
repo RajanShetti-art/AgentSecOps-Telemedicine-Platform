@@ -4,6 +4,13 @@ from pydantic import BaseModel, Field
 from pydantic import ConfigDict
 
 
+class PatientCreateRequest(BaseModel):
+    """Patient payload accepted when creating a record."""
+
+    full_name: str = Field(min_length=2, max_length=100)
+    condition: str = Field(min_length=2, max_length=200)
+
+
 class PatientResponse(BaseModel):
     """Patient data returned by API endpoints."""
 

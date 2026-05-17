@@ -30,7 +30,11 @@ export default function AppointmentsPage() {
         setPatientId(String(patientList[0].id));
       }
     } catch (err) {
-      setError(err?.response?.data?.detail || "Failed to fetch patients.");
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        setError("Please sign in again to fetch patients.");
+      } else {
+        setError(err?.response?.data?.detail || "Failed to fetch patients.");
+      }
     } finally {
       setLoadingPatients(false);
     }
@@ -120,7 +124,7 @@ export default function AppointmentsPage() {
           required
         />
 
-        <label htmlFor="reason">Reason</label>
+        <label htmlFor="reason">Reason for Visit</label>
         <textarea
           id="reason"
           placeholder="Enter reason for visit"

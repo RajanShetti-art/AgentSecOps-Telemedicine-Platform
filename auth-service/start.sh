@@ -3,5 +3,25 @@ set -e
 
 export PYTHONPATH=/service
 
-alembic upgrade head
+# Wait for Postgres to accept connections before migrating.
+python - <<'PY'
+import os
+import socket
+import sys
+import time
+
+host = os.getenv("DB_HOST", "db")
+for _ in range(60):
+	try:
+		with socket.create_connection((host, 5432), timeout=2):
+			sys.exit(0)
+	except OSError:
+		time.sleep(2)
+
+raise SystemExit("Postgres did not become ready in time")
+PY
+
+# Try to run migrations but don't fail startup if migrations cannot be applied
+alembic upgrade head || echo "alembic upgrade failed, continuing without migration"
+
 uvicorn app.main:app --host 0.0.0.0 --port 8000

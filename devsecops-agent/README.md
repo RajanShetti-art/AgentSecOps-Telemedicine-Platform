@@ -85,3 +85,7 @@ Each analysis result follows this structure:
   "confidence": 0.0
 }
 ```
+
+Rajan Suresh Shetti
+Puneeth Nagaraj
+Pavan Reddy
